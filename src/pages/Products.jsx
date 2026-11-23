@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import initialProducts from "../data/products";
+import { useStore } from "../context/StoreContext";
 
 import {
   Plus,
@@ -22,64 +22,13 @@ const normalizeCategory = (category) => {
 
 function Products() {
 
-  // Products state
-  const [products, setProducts] = useState(() => {
-    try {
-      const saved = localStorage.getItem("roselleProducts");
-      const data = saved ? JSON.parse(saved) : initialProducts;
-
-      return data.map((product) => ({
-        ...product,
-        category: normalizeCategory(product.category)
-      }));
-
-    } catch {
-      return initialProducts;
-    }
-  });
-
-
-  // Categories state
-  const [categories, setCategories] = useState(() => {
-    const defaultCategories = [
-      "Rose Bouquets",
-      "Tulips",
-      "Mixed Flowers",
-      "Lilies",
-      "Other Flowers"
-    ];
-
-    try {
-      const saved = localStorage.getItem("roselleCategories");
-
-      const savedCategories = saved
-        ? JSON.parse(saved)
-        : [];
-
-      const productCategories = products.map(
-        (product) => normalizeCategory(product.category)
-      );
-
-      const allCategories = [
-        ...defaultCategories,
-        ...productCategories,
-        ...savedCategories.map(normalizeCategory)
-      ].filter(Boolean);
-
-      return [
-        ...new Map(
-          allCategories.map((cat) => [
-            cat.toLowerCase(),
-            cat
-          ])
-        ).values()
-      ];
-
-    } catch {
-      return defaultCategories;
-    }
-  });
-
+  // Get shared Products and Categories
+  const {
+    products,
+    categories,
+    updateProducts,
+    updateCategories
+  } = useStore();
 
   // Other states
   const [search, setSearch] = useState("");
@@ -90,7 +39,6 @@ function Products() {
 
   const [showNewCategory, setShowNewCategory] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
-
 
   // Empty product form
   const emptyForm = {
@@ -105,74 +53,46 @@ function Products() {
 
   const [form, setForm] = useState(emptyForm);
 
-
-  // Save products
+  // Save products globally
   const saveProducts = (updatedProducts) => {
-
-    setProducts(updatedProducts);
-
-    localStorage.setItem(
-      "roselleProducts",
-      JSON.stringify(updatedProducts)
-    );
-
+    updateProducts(updatedProducts);
   };
 
-
-  // Save categories
+  // Save categories globally
   const saveCategories = (updatedCategories) => {
-
-    setCategories(updatedCategories);
-
-    localStorage.setItem(
-      "roselleCategories",
-      JSON.stringify(updatedCategories)
-    );
-
+    updateCategories(updatedCategories);
   };
-
 
   // Handle input changes
   const handleChange = (e) => {
-
     const { name, value } = e.target;
 
     setForm((prev) => ({
       ...prev,
       [name]: value
     }));
-
   };
-
 
   // Handle image upload
   const handleImage = (e) => {
-
     const file = e.target.files[0];
 
     if (file) {
-
       const reader = new FileReader();
 
       reader.onloadend = () => {
-
         setForm((prev) => ({
           ...prev,
           image: reader.result
         }));
-
       };
 
       reader.readAsDataURL(file);
-
     }
-
   };
-
 
   // Add new category
   const handleAddCategory = () => {
-
     const newCategory = newCategoryName.trim();
 
     if (!newCategory) {
@@ -203,13 +123,10 @@ function Products() {
 
     setNewCategoryName("");
     setShowNewCategory(false);
-
   };
-
 
   // Handle product submission
   const handleSubmit = (e) => {
-
     e.preventDefault();
 
     const productData = {
@@ -222,22 +139,18 @@ function Products() {
     let updatedProducts;
 
     if (editingId !== null) {
-
       updatedProducts = products.map((product) =>
         product.id === editingId
           ? { ...product, ...productData }
           : product
       );
-
     } else {
-
       const newProduct = {
         id: Date.now(),
         ...productData
       };
 
       updatedProducts = [...products, newProduct];
-
     }
 
     saveProducts(updatedProducts);
@@ -246,13 +159,10 @@ function Products() {
     setEditingId(null);
     setShowForm(false);
     setShowNewCategory(false);
-
   };
-
 
   // Edit product
   const handleEdit = (product) => {
-
     setForm({
       ...product,
       category: normalizeCategory(product.category),
@@ -263,33 +173,25 @@ function Products() {
     setEditingId(product.id);
     setShowNewCategory(false);
     setShowForm(true);
-
   };
-
 
   // Delete product
   const handleDelete = (id) => {
-
     const confirmDelete = window.confirm(
       "Are you sure you want to delete this product?"
     );
 
     if (confirmDelete) {
-
       const updatedProducts = products.filter(
         (product) => product.id !== id
       );
 
       saveProducts(updatedProducts);
-
     }
-
   };
-
 
   // Search and category filtering
   const filteredProducts = products.filter((product) => {
-
     const matchesSearch = product.name
       .toLowerCase()
       .includes(search.toLowerCase());
@@ -299,17 +201,13 @@ function Products() {
       normalizeCategory(product.category) === category;
 
     return matchesSearch && matchesCategory;
-
   });
 
-
   return (
-
     <div className="products-page">
 
       {/* Page Heading */}
       <div className="page-heading">
-
         <div>
           <h1>Products</h1>
           <p>Manage your floral collection and inventory.</p>
@@ -328,9 +226,7 @@ function Products() {
           <Plus size={19} />
           Add Product
         </button>
-
       </div>
-
 
       {/* Product Summary */}
       <div className="product-summary">
@@ -361,12 +257,10 @@ function Products() {
 
       </div>
 
-
       {/* Search and Category Filter */}
       <div className="product-toolbar">
 
         <div className="product-search">
-
           <Search size={19} />
 
           <input
@@ -375,28 +269,22 @@ function Products() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
-
         </div>
 
         <select
           value={category}
           onChange={(e) => setCategory(e.target.value)}
         >
-
           <option value="All">All Categories</option>
 
           {categories.map((cat) => (
-
             <option key={cat} value={cat}>
               {cat}
             </option>
-
           ))}
-
         </select>
 
       </div>
-
 
       {/* Products Table */}
       <div className="products-table-card">
@@ -423,22 +311,17 @@ function Products() {
                 <tr key={product.id}>
 
                   <td>
-
                     <div className="product-info">
 
                       {product.image ? (
-
                         <img
                           src={product.image}
                           alt={product.name}
                         />
-
                       ) : (
-
                         <div className="product-placeholder">
                           🌷
                         </div>
-
                       )}
 
                       <div>
@@ -446,7 +329,6 @@ function Products() {
                       </div>
 
                     </div>
-
                   </td>
 
                   <td>{normalizeCategory(product.category)}</td>
@@ -458,17 +340,14 @@ function Products() {
                   <td>{product.stock}</td>
 
                   <td>
-
                     <span className={`status-badge ${
                       product.status.toLowerCase().replaceAll(" ", "-")
                     }`}>
                       {product.status}
                     </span>
-
                   </td>
 
                   <td>
-
                     <div className="product-actions">
 
                       <button
@@ -486,7 +365,6 @@ function Products() {
                       </button>
 
                     </div>
-
                   </td>
 
                 </tr>
@@ -494,13 +372,11 @@ function Products() {
               ))}
 
               {filteredProducts.length === 0 && (
-
                 <tr>
                   <td colSpan="6" className="empty-message">
                     No products found.
                   </td>
                 </tr>
-
               )}
 
             </tbody>
@@ -508,9 +384,7 @@ function Products() {
           </table>
 
         </div>
-
       </div>
-
 
       {/* Add / Edit Product Modal */}
       {showForm && (
@@ -541,7 +415,6 @@ function Products() {
 
             </div>
 
-
             <form onSubmit={handleSubmit}>
 
               <label>Product Name</label>
@@ -555,32 +428,26 @@ function Products() {
                 required
               />
 
-
-              {/* Category Selection */}
               <label>Product Category</label>
 
               <select
                 name="category"
                 value={showNewCategory ? "__add_new__" : form.category}
                 onChange={(e) => {
-
                   if (e.target.value === "__add_new__") {
                     setShowNewCategory(true);
                   } else {
                     setShowNewCategory(false);
                     handleChange(e);
                   }
-
                 }}
                 required
               >
 
                 {categories.map((cat) => (
-
                   <option key={cat} value={cat}>
                     {cat}
                   </option>
-
                 ))}
 
                 <option value="__add_new__">
@@ -589,8 +456,6 @@ function Products() {
 
               </select>
 
-
-              {/* New Category Input */}
               {showNewCategory && (
 
                 <div className="new-category-box">
@@ -616,7 +481,6 @@ function Products() {
                 </div>
 
               )}
-
 
               <div className="form-row">
 
@@ -648,7 +512,6 @@ function Products() {
 
               </div>
 
-
               <label>Product Status</label>
 
               <select
@@ -656,13 +519,10 @@ function Products() {
                 value={form.status}
                 onChange={handleChange}
               >
-
                 <option>Published</option>
                 <option>Draft</option>
                 <option>Out of Stock</option>
-
               </select>
-
 
               <label>Product Description</label>
 
@@ -674,7 +534,6 @@ function Products() {
                 rows="3"
               />
 
-
               <label>Upload Product Image</label>
 
               <input
@@ -683,17 +542,13 @@ function Products() {
                 onChange={handleImage}
               />
 
-
               {form.image && (
-
                 <img
                   src={form.image}
                   alt="Product preview"
                   className="product-preview"
                 />
-
               )}
-
 
               <div className="modal-actions">
 
@@ -726,9 +581,7 @@ function Products() {
       )}
 
     </div>
-
   );
-
 }
 
 export default Products;

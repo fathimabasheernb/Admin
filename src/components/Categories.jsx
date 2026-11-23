@@ -7,72 +7,66 @@ import {
   X
 } from "lucide-react";
 
-import initialProducts from "../data/products";
+import { useStore } from "../context/StoreContext";
 
 function Categories() {
 
-  const [categories, setCategories] = useState(() => {
-    const saved = JSON.parse(
-      localStorage.getItem("roselleCategories") || "[]"
-    );
-
-    const products =
-      JSON.parse(localStorage.getItem("roselleProducts") || "null")
-      || initialProducts;
-
-    const data = saved.length
-      ? saved
-      : [...new Set(products.map(p => p.category).filter(Boolean))];
-
-    return data.map((c, i) =>
-      typeof c === "string"
-        ? { id: i + 1, name: c, image: "" }
-        : c
-    );
-  });
+  const {
+    categories,
+    products,
+    updateCategories,
+    updateProducts
+  } = useStore();
 
   const [search, setSearch] = useState("");
-
   const [showModal, setShowModal] = useState(false);
-
   const [editId, setEditId] = useState(null);
-
   const [name, setName] = useState("");
-
   const [image, setImage] = useState("");
 
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
-
   const [categoryToDelete, setCategoryToDelete] = useState(null);
 
+  const [categoryImages, setCategoryImages] = useState(() => {
+    try {
+      return JSON.parse(
+        localStorage.getItem("roselleCategoryImages") || "{}"
+      );
+    } catch {
+      return {};
+    }
+  });
 
-  const save = (data) => {
+  // Convert shared category names into display objects
+  const categoryList = categories.map((category, index) => ({
+    id: index + 1,
+    name: typeof category === "string" ? category : category.name,
+    image:
+      categoryImages[
+        typeof category === "string" ? category : category.name
+      ] || ""
+  }));
 
-    setCategories(data);
+  // Save category images
+  const saveCategoryImages = (updatedImages) => {
+    setCategoryImages(updatedImages);
 
     localStorage.setItem(
-      "roselleCategories",
-      JSON.stringify(data)
+      "roselleCategoryImages",
+      JSON.stringify(updatedImages)
     );
-
-    window.dispatchEvent(new Event("dashboardUpdate"));
-
   };
 
+  // Open Add / Edit Modal
   const openModal = (category = null) => {
-
-    setEditId(category?.id || null);
-
+    setEditId(category?.name || null);
     setName(category?.name || "");
-
     setImage(category?.image || "");
-
     setShowModal(true);
-
   };
 
+  // Save Category
   const handleSave = () => {
-
     const value = name.trim();
 
     if (!value) {
@@ -80,133 +74,156 @@ function Categories() {
       return;
     }
 
-    if (categories.some(c =>
-      c.name.toLowerCase() === value.toLowerCase() &&
-      c.id !== editId
-    )) {
+    if (
+      categories.some(category => {
+        const categoryName =
+          typeof category === "string"
+            ? category
+            : category.name;
+
+        return (
+          categoryName.toLowerCase() === value.toLowerCase() &&
+          categoryName !== editId
+        );
+      })
+    ) {
       alert("Category already exists");
       return;
     }
 
-    const oldCategory = categories.find(
-      c => c.id === editId
-    );
+    let updatedCategories;
 
-    const updated = editId
+    if (editId) {
+      updatedCategories = categories.map(category => {
+        const categoryName =
+          typeof category === "string"
+            ? category
+            : category.name;
 
-      ? categories.map(c =>
-          c.id === editId
-            ? { ...c, name: value, image }
-            : c
-        )
+        return categoryName === editId ? value : categoryName;
+      });
 
-      : [
-          ...categories,
-          {
-            id: Date.now(),
-            name: value,
-            image
-          }
-        ];
+      // Update products using the renamed category
+      if (editId !== value) {
+        const updatedProducts = products.map(product =>
+          product.category === editId
+            ? { ...product, category: value }
+            : product
+        );
 
-    if (oldCategory && oldCategory.name !== value) {
+        updateProducts(updatedProducts);
+      }
 
-      const products =
-        JSON.parse(localStorage.getItem("roselleProducts") || "null")
-        || initialProducts;
+      // Move saved category image to the new name
+      const updatedImages = { ...categoryImages };
 
-      const updatedProducts = products.map(p =>
-        p.category === oldCategory.name
-          ? { ...p, category: value }
-          : p
-      );
+      if (updatedImages[editId]) {
+        updatedImages[value] = image || updatedImages[editId];
+        delete updatedImages[editId];
+      } else if (image) {
+        updatedImages[value] = image;
+      }
 
-      localStorage.setItem(
-        "roselleProducts",
-        JSON.stringify(updatedProducts)
-      );
+      saveCategoryImages(updatedImages);
 
+    } else {
+      updatedCategories = [
+        ...categories,
+        value
+      ];
+
+      if (image) {
+        saveCategoryImages({
+          ...categoryImages,
+          [value]: image
+        });
+      }
     }
 
-    save(updated);
+    updateCategories(updatedCategories);
 
     setShowModal(false);
-
     setName("");
-
     setImage("");
-
     setEditId(null);
-
   };
 
+  // Open Delete Confirmation
   const deleteCategory = (category) => {
-
     setCategoryToDelete(category);
-
     setShowDeleteAlert(true);
-
   };
 
-
+  // Confirm Delete
   const confirmDeleteCategory = () => {
-
     if (!categoryToDelete) return;
 
-    const products =
-      JSON.parse(localStorage.getItem("roselleProducts") || "null")
-      || initialProducts;
+    const categoryName = categoryToDelete.name;
 
-
-    const updatedProducts = products.map(p =>
-      p.category === categoryToDelete.name
-        ? { ...p, category: "Uncategorized" }
-        : p
+    // Move products to Uncategorized
+    const updatedProducts = products.map(product =>
+      product.category === categoryName
+        ? { ...product, category: "Uncategorized" }
+        : product
     );
 
-    localStorage.setItem(
-      "roselleProducts",
-      JSON.stringify(updatedProducts)
-    );
+    updateProducts(updatedProducts);
 
+    // Remove category from shared categories
+    const updatedCategories = categories.filter(category => {
+      const currentName =
+        typeof category === "string"
+          ? category
+          : category.name;
 
-    const updatedCategories = categories.filter(
-      c => c.id !== categoryToDelete.id
-    );
+      return currentName !== categoryName;
+    });
 
-    save(updatedCategories);
+    updateCategories(updatedCategories);
 
-    window.dispatchEvent(new Event("dashboardUpdate"));
+    // Remove its saved image
+    const updatedImages = { ...categoryImages };
+    delete updatedImages[categoryName];
+    saveCategoryImages(updatedImages);
 
     setShowDeleteAlert(false);
-
     setCategoryToDelete(null);
-
   };
 
-
+  // Cancel Delete
   const cancelDeleteCategory = () => {
-
     setShowDeleteAlert(false);
-
     setCategoryToDelete(null);
-
   };
 
-  const products =
-    JSON.parse(localStorage.getItem("roselleProducts") || "null")
-    || initialProducts;
+  // Handle Category Image
+  const handleImage = (e) => {
+    const file = e.target.files[0];
 
+    if (!file) return;
 
-  const filtered = categories.filter(c =>
-    c.name.toLowerCase().includes(search.toLowerCase())
+    if (file.size > 2 * 1024 * 1024) {
+      alert("Please select an image smaller than 2 MB.");
+      return;
+    }
+
+    const reader = new FileReader();
+
+    reader.onloadend = () => {
+      setImage(reader.result);
+    };
+
+    reader.readAsDataURL(file);
+  };
+
+  // Search Categories
+  const filtered = categoryList.filter(category =>
+    category.name.toLowerCase().includes(search.toLowerCase())
   );
-
 
   return (
 
     <div className="categories-page">
-
 
       {/* Page Heading */}
 
@@ -267,7 +284,7 @@ function Categories() {
 
           <div
             className="category-card"
-            key={category.id}
+            key={category.name}
           >
 
             <img
@@ -281,7 +298,7 @@ function Categories() {
             <p>
               {
                 products.filter(
-                  p => p.category === category.name
+                  product => product.category === category.name
                 ).length
               } Products
             </p>
@@ -307,7 +324,6 @@ function Categories() {
           </div>
 
         ))}
-
 
         {!filtered.length && (
           <p>No categories found.</p>
@@ -358,33 +374,7 @@ function Categories() {
             <input
               type="file"
               accept="image/*"
-              onChange={e => {
-
-                const file = e.target.files[0];
-
-                if (file) {
-
-                  if (file.size > 2 * 1024 * 1024) {
-
-                    alert(
-                      "Please select an image smaller than 2 MB."
-                    );
-
-                    return;
-
-                  }
-
-                  const reader = new FileReader();
-
-                  reader.onloadend = () => {
-                    setImage(reader.result);
-                  };
-
-                  reader.readAsDataURL(file);
-
-                }
-
-              }}
+              onChange={handleImage}
             />
 
 
@@ -419,7 +409,7 @@ function Categories() {
       )}
 
 
-      {/* CUSTOM DELETE ALERT */}
+      {/* Custom Delete Alert */}
 
       {showDeleteAlert && (
 
