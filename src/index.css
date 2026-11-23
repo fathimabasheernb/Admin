@@ -1236,3 +1236,166 @@ textarea {
     flex-direction: column;
   }
 }
+
+/* CATEGORIES PAGE */
+
+.categories-page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.category-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 22px;
+}
+
+.category-card {
+  background: #fff;
+  border: 1px solid #f1e7e4;
+  border-radius: 16px;
+  padding: 13px;
+  overflow: hidden;
+  transition: 0.3s ease;
+}
+
+.category-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 20px rgba(120, 75, 75, 0.09);
+}
+
+.category-image {
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+  border-radius: 11px;
+}
+
+.category-card h3 {
+  color: #65434b;
+  font-size: 16px;
+  margin: 15px 5px 5px;
+}
+
+.category-card p {
+  color: #a48d90;
+  font-size: 12px;
+  margin: 5px;
+}
+
+.category-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin: 15px 5px 5px;
+}
+
+.category-actions button {
+  width: 35px;
+  height: 35px;
+  border: none;
+  border-radius: 9px;
+  background: #f9eeec;
+  color: #a85e70;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.category-actions button:hover {
+  background: #f1dce1;
+  transform: scale(1.05);
+}
+
+.category-alert-box {
+  width: 420px;
+  max-width: 90%;
+  background: #ffffff;
+  padding: 35px;
+  border-radius: 18px;
+  text-align: center;
+  box-shadow: 0 15px 50px rgba(0, 0, 0, 0.12);
+  animation: alertAppear 0.25s ease;
+}
+
+.delete-icon {
+  width: 65px;
+  height: 65px;
+  background: #fff0f1;
+  color: #d46f82;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 18px;
+}
+
+.category-alert-box h2 {
+  color: #493b3b;
+  font-size: 21px;
+  margin-bottom: 12px;
+}
+
+.category-alert-box p {
+  color: #888888;
+  font-size: 14px;
+  line-height: 1.8;
+  margin-bottom: 25px;
+}
+
+.category-alert-box strong {
+  color: #b86f81;
+}
+
+.category-alert-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.category-alert-actions button {
+  flex: 1;
+  padding: 12px 10px;
+  border-radius: 9px;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  transition: 0.2s ease;
+}
+
+.cancel-delete-btn {
+  background: #f5f0ed;
+  color: #6d5b55;
+}
+
+.cancel-delete-btn:hover {
+  background: #ebe1dc;
+}
+
+.confirm-delete-btn {
+  background: #d78395;
+  color: white;
+}
+
+.confirm-delete-btn:hover {
+  background: #bd687c;
+}
+
+@keyframes alertAppear {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}

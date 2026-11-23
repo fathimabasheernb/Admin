@@ -1,22 +1,84 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 
 import StatCard from "../components/StatCard";
 import SalesChart from "../components/SalesChart";
 import RecentOrders from "../components/RecentOrders";
 
-
 function Dashboard() {
+
+  const [stats, setStats] = useState({
+    products: 0,
+    revenue: 0,
+    orders: 0,
+    categories: 0
+  });
+
+  const updateDashboard = () => {
+
+    const products = JSON.parse(
+      localStorage.getItem("roselleProducts") || "[]"
+    );
+
+    const categories = JSON.parse(
+      localStorage.getItem("roselleCategories") || "[]"
+    );
+
+    const orders = JSON.parse(
+      localStorage.getItem("roselleOrders") || "[]"
+    );
+
+    const uniqueCategories = new Set([
+      ...categories.map((cat) =>
+        typeof cat === "object" ? cat.name : cat
+      ),
+      ...products.map((product) =>
+        typeof product.category === "object"
+          ? product.category?.name
+          : product.category
+      )
+    ].filter(Boolean));
+
+    const totalRevenue = orders
+      .filter((order) => order.payment === "Paid")
+      .reduce(
+        (total, order) =>
+          total + Number(order.amount || 0),
+        0
+      );
+
+    setStats({
+      products: products.length,
+      revenue: totalRevenue,
+      orders: orders.length,
+      categories: uniqueCategories.size
+    });
+
+  };
+
+
+  useEffect(() => {
+
+    updateDashboard();
+
+    window.addEventListener("storage", updateDashboard);
+    window.addEventListener("dashboardUpdate", updateDashboard);
+
+    return () => {
+      window.removeEventListener("storage", updateDashboard);
+      window.removeEventListener("dashboardUpdate", updateDashboard);
+    };
+
+  }, []);
+
 
   return (
 
     <div className="dashboard-page">
 
-      {/* Welcome Section */}
-
       <div className="welcome-section">
 
         <div>
-          <h1>Welcome back, Admin! 🌷</h1>
+          <h1>Welcome back, Fathima! 🌷</h1>
 
           <p>
             Here's what's happening with your Roselle store today.
@@ -30,38 +92,32 @@ function Dashboard() {
       </div>
 
 
-      {/* Statistics Cards */}
-
       <div className="stats-grid">
 
         <StatCard
           title="Total Products"
-          value="125"
-          change="+12.5%"
+          value={stats.products}
           icon="products"
           color="pink"
         />
 
         <StatCard
           title="Total Revenue"
-          value="₹48,250"
-          change="+8.2%"
+          value={`₹${stats.revenue.toLocaleString("en-IN")}`}
           icon="revenue"
           color="purple"
         />
 
         <StatCard
           title="Total Orders"
-          value="86"
-          change="+15.3%"
+          value={stats.orders}
           icon="orders"
           color="orange"
         />
 
         <StatCard
           title="Categories"
-          value="12"
-          change="+2 new"
+          value={stats.categories}
           icon="categories"
           color="green"
         />
@@ -69,21 +125,13 @@ function Dashboard() {
       </div>
 
 
-      {/* Sales Chart */}
-
       <div className="dashboard-chart">
-
         <SalesChart />
-
       </div>
 
 
-      {/* Recent Orders */}
-
       <div className="dashboard-orders">
-
         <RecentOrders />
-
       </div>
 
     </div>

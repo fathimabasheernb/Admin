@@ -9,15 +9,30 @@ import {
   X
 } from "lucide-react";
 
+// Convert category objects into strings
+const normalizeCategory = (category) => {
+  if (typeof category === "string") return category;
+
+  if (category && typeof category === "object") {
+    return category.name || "";
+  }
+
+  return "";
+};
+
 function Products() {
 
   // Products state
-
   const [products, setProducts] = useState(() => {
-    const saved = localStorage.getItem("roselleProducts");
-
     try {
-      return saved ? JSON.parse(saved) : initialProducts;
+      const saved = localStorage.getItem("roselleProducts");
+      const data = saved ? JSON.parse(saved) : initialProducts;
+
+      return data.map((product) => ({
+        ...product,
+        category: normalizeCategory(product.category)
+      }));
+
     } catch {
       return initialProducts;
     }
@@ -25,14 +40,7 @@ function Products() {
 
 
   // Categories state
-
   const [categories, setCategories] = useState(() => {
-    const saved = localStorage.getItem("roselleCategories");
-
-    const productCategories = products.map(
-      (product) => product.category
-    );
-
     const defaultCategories = [
       "Rose Bouquets",
       "Tulips",
@@ -42,21 +50,38 @@ function Products() {
     ];
 
     try {
+      const saved = localStorage.getItem("roselleCategories");
+
+      const savedCategories = saved
+        ? JSON.parse(saved)
+        : [];
+
+      const productCategories = products.map(
+        (product) => normalizeCategory(product.category)
+      );
+
+      const allCategories = [
+        ...defaultCategories,
+        ...productCategories,
+        ...savedCategories.map(normalizeCategory)
+      ].filter(Boolean);
+
       return [
-        ...new Set([
-          ...defaultCategories,
-          ...productCategories,
-          ...(saved ? JSON.parse(saved) : [])
-        ])
+        ...new Map(
+          allCategories.map((cat) => [
+            cat.toLowerCase(),
+            cat
+          ])
+        ).values()
       ];
+
     } catch {
-      return [...new Set([...defaultCategories, ...productCategories])];
+      return defaultCategories;
     }
   });
 
 
   // Other states
-
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("All");
 
@@ -68,7 +93,6 @@ function Products() {
 
 
   // Empty product form
-
   const emptyForm = {
     name: "",
     category: "Rose Bouquets",
@@ -83,7 +107,6 @@ function Products() {
 
 
   // Save products
-
   const saveProducts = (updatedProducts) => {
 
     setProducts(updatedProducts);
@@ -97,7 +120,6 @@ function Products() {
 
 
   // Save categories
-
   const saveCategories = (updatedCategories) => {
 
     setCategories(updatedCategories);
@@ -111,7 +133,6 @@ function Products() {
 
 
   // Handle input changes
-
   const handleChange = (e) => {
 
     const { name, value } = e.target;
@@ -125,7 +146,6 @@ function Products() {
 
 
   // Handle image upload
-
   const handleImage = (e) => {
 
     const file = e.target.files[0];
@@ -151,7 +171,6 @@ function Products() {
 
 
   // Add new category
-
   const handleAddCategory = () => {
 
     const newCategory = newCategoryName.trim();
@@ -189,20 +208,20 @@ function Products() {
 
 
   // Handle product submission
-
   const handleSubmit = (e) => {
 
     e.preventDefault();
 
     const productData = {
       ...form,
+      category: normalizeCategory(form.category),
       price: Number(form.price),
       stock: Number(form.stock)
     };
 
     let updatedProducts;
 
-    if (editingId) {
+    if (editingId !== null) {
 
       updatedProducts = products.map((product) =>
         product.id === editingId
@@ -232,11 +251,11 @@ function Products() {
 
 
   // Edit product
-
   const handleEdit = (product) => {
 
     setForm({
       ...product,
+      category: normalizeCategory(product.category),
       price: String(product.price),
       stock: String(product.stock)
     });
@@ -249,7 +268,6 @@ function Products() {
 
 
   // Delete product
-
   const handleDelete = (id) => {
 
     const confirmDelete = window.confirm(
@@ -270,7 +288,6 @@ function Products() {
 
 
   // Search and category filtering
-
   const filteredProducts = products.filter((product) => {
 
     const matchesSearch = product.name
@@ -278,7 +295,8 @@ function Products() {
       .includes(search.toLowerCase());
 
     const matchesCategory =
-      category === "All" || product.category === category;
+      category === "All" ||
+      normalizeCategory(product.category) === category;
 
     return matchesSearch && matchesCategory;
 
@@ -290,7 +308,6 @@ function Products() {
     <div className="products-page">
 
       {/* Page Heading */}
-
       <div className="page-heading">
 
         <div>
@@ -308,17 +325,14 @@ function Products() {
             setShowForm(true);
           }}
         >
-
           <Plus size={19} />
           Add Product
-
         </button>
 
       </div>
 
 
       {/* Product Summary */}
-
       <div className="product-summary">
 
         <div className="summary-box">
@@ -349,7 +363,6 @@ function Products() {
 
 
       {/* Search and Category Filter */}
-
       <div className="product-toolbar">
 
         <div className="product-search">
@@ -386,7 +399,6 @@ function Products() {
 
 
       {/* Products Table */}
-
       <div className="products-table-card">
 
         <div className="table-container">
@@ -394,7 +406,6 @@ function Products() {
           <table>
 
             <thead>
-
               <tr>
                 <th>PRODUCT</th>
                 <th>CATEGORY</th>
@@ -403,7 +414,6 @@ function Products() {
                 <th>STATUS</th>
                 <th>ACTIONS</th>
               </tr>
-
             </thead>
 
             <tbody>
@@ -439,10 +449,10 @@ function Products() {
 
                   </td>
 
-                  <td>{product.category}</td>
+                  <td>{normalizeCategory(product.category)}</td>
 
                   <td>
-                    ₹{product.price.toLocaleString("en-IN")}
+                    ₹{Number(product.price).toLocaleString("en-IN")}
                   </td>
 
                   <td>{product.stock}</td>
@@ -503,7 +513,6 @@ function Products() {
 
 
       {/* Add / Edit Product Modal */}
-
       {showForm && (
 
         <div className="modal-overlay">
@@ -514,7 +523,7 @@ function Products() {
 
               <div>
                 <h2>
-                  {editingId ? "Edit Product" : "Add New Product"}
+                  {editingId !== null ? "Edit Product" : "Add New Product"}
                 </h2>
 
                 <p>Enter your floral product details.</p>
@@ -548,7 +557,6 @@ function Products() {
 
 
               {/* Category Selection */}
-
               <label>Product Category</label>
 
               <select
@@ -583,7 +591,6 @@ function Products() {
 
 
               {/* New Category Input */}
-
               {showNewCategory && (
 
                 <div className="new-category-box">
@@ -705,7 +712,7 @@ function Products() {
                   type="submit"
                   className="save-button"
                 >
-                  {editingId ? "Update Product" : "Save Product"}
+                  {editingId !== null ? "Update Product" : "Save Product"}
                 </button>
 
               </div>

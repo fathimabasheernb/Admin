@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 
 import {
   BarChart,
@@ -14,281 +14,382 @@ import {
   Legend
 } from "recharts";
 
+import initialProducts from "../data/products";
 
 function Analytics() {
 
-  const revenueData = [
-    { month: "Jan", revenue: 12000 },
-    { month: "Feb", revenue: 18000 },
-    { month: "Mar", revenue: 15000 },
-    { month: "Apr", revenue: 25000 },
-    { month: "May", revenue: 22000 },
-    { month: "Jun", revenue: 32000 },
-    { month: "Jul", revenue: 28000 }
-  ];
+  const [analytics, setAnalytics] = useState({
+    products: [],
+    orders: [],
+    revenue: 0,
+    totalOrders: 0,
+    totalProducts: 0,
+    categories: 0,
+    monthlyRevenue: [],
+    orderStatus: [],
+    bestSelling: []
+  });
 
+  // Read actual data from localStorage
 
-  const categoryData = [
-    { name: "Rose Bouquets", value: 45 },
-    { name: "Mixed Flowers", value: 25 },
-    { name: "Lilies", value: 20 },
-    { name: "Other Flowers", value: 10 }
-  ];
+  const updateAnalytics = () => {
 
+    const savedProducts = localStorage.getItem("roselleProducts");
+    const savedOrders = localStorage.getItem("roselleOrders");
+    const savedCategories = localStorage.getItem("roselleCategories");
 
-  const bestSelling = [
-    {
-      name: "Blush Rose Bouquet",
-      sales: 85,
-      revenue: 127415
-    },
-    {
-      name: "Classic Red Roses",
-      sales: 72,
-      revenue: 93528
-    },
-    {
-      name: "Pastel Dream Bouquet",
-      sales: 58,
-      revenue: 110142
-    },
-    {
-      name: "White Lily Elegance",
-      sales: 42,
-      revenue: 71358
-    }
-  ];
+    const products = savedProducts
+      ? JSON.parse(savedProducts)
+      : initialProducts;
 
+    const orders = savedOrders
+      ? JSON.parse(savedOrders)
+      : [];
+
+    const categories = savedCategories
+      ? JSON.parse(savedCategories)
+      : [];
+
+    // Total revenue from paid orders
+
+    const paidOrders = orders.filter(
+      order => order.payment === "Paid"
+    );
+
+    const revenue = paidOrders.reduce(
+      (total, order) => total + Number(order.amount || 0),
+      0
+    );
+
+    // Total categories
+
+    const categoryNames = [
+      ...products.map(product =>
+        typeof product.category === "object"
+          ? product.category?.name
+          : product.category
+      ),
+      ...categories.map(category =>
+        typeof category === "object"
+          ? category?.name
+          : category
+      )
+    ].filter(Boolean);
+
+    const uniqueCategories = [
+      ...new Set(
+        categoryNames.map(category => category.toLowerCase())
+      )
+    ];
+
+    // Monthly revenue
+
+    const months = [
+      "Jan", "Feb", "Mar", "Apr",
+      "May", "Jun", "Jul", "Aug",
+      "Sep", "Oct", "Nov", "Dec"
+    ];
+
+    const monthlyRevenue = months.map((month, index) => {
+
+      const monthRevenue = paidOrders
+        .filter(order => {
+
+          const date = new Date(order.date);
+
+          if (!isNaN(date.getTime())) {
+            return date.getMonth() === index;
+          }
+
+          const parts = order.date?.split(" ");
+
+          if (parts?.length === 3) {
+            return parts[1]?.startsWith(month);
+          }
+
+          return false;
+
+        })
+        .reduce(
+          (total, order) => total + Number(order.amount || 0),
+          0
+        );
+
+      return {
+        month,
+        revenue: monthRevenue
+      };
+
+    });
+
+    // Order status statistics
+
+    const statusNames = [
+      "Pending",
+      "Processing",
+      "Shipped",
+      "Delivered"
+    ];
+
+    const orderStatus = statusNames.map(status => ({
+      name: status,
+      value: orders.filter(
+        order => order.status === status
+      ).length
+    }));
+
+    // Best-selling products
+    // Based on how often each product appears in orders
+
+    const productSales = {};
+
+    orders.forEach(order => {
+
+      const productName = order.product;
+
+      if (productName) {
+        productSales[productName] =
+          (productSales[productName] || 0) + 1;
+      }
+
+    });
+
+    const bestSelling = Object.entries(productSales)
+      .map(([name, sales]) => ({
+        name,
+        sales
+      }))
+      .sort((a, b) => b.sales - a.sales)
+      .slice(0, 5);
+
+    setAnalytics({
+
+      products,
+      orders,
+      revenue,
+      totalOrders: orders.length,
+      totalProducts: products.length,
+      categories: uniqueCategories.length,
+      monthlyRevenue,
+      orderStatus,
+      bestSelling
+
+    });
+
+  };
+
+  // Automatically refresh analytics
+
+  useEffect(() => {
+
+    updateAnalytics();
+
+    window.addEventListener(
+      "dashboardUpdate",
+      updateAnalytics
+    );
+
+    window.addEventListener(
+      "storage",
+      updateAnalytics
+    );
+
+    return () => {
+
+      window.removeEventListener(
+        "dashboardUpdate",
+        updateAnalytics
+      );
+
+      window.removeEventListener(
+        "storage",
+        updateAnalytics
+      );
+
+    };
+
+  }, []);
 
   const COLORS = [
-    "#C77D94",
-    "#E6A8B8",
-    "#A76D83",
-    "#F0C6D2"
+    "#e8a0ad",
+    "#b9a0d1",
+    "#f4c58a",
+    "#9fc9b0"
   ];
-
 
   return (
 
     <div className="analytics-page">
-
 
       {/* Heading */}
 
       <div className="page-heading">
 
         <div>
-
           <h1>Analytics</h1>
-
-          <p>Understand your store's performance and growth.</p>
-
+          <p>
+            Track your Roselle store performance and business growth.
+          </p>
         </div>
-
-        <select className="analytics-filter">
-
-          <option>Last 7 Months</option>
-
-          <option>Last 30 Days</option>
-
-          <option>Last 12 Months</option>
-
-        </select>
 
       </div>
 
 
-      {/* Statistics */}
+      {/* Statistics Cards */}
 
       <div className="product-summary">
 
-
         <div className="summary-box">
-
           <span>Total Revenue</span>
-
-          <h2>₹1,52,000</h2>
-
-          <small>+12.5% from last period</small>
-
+          <h2>
+            ₹{analytics.revenue.toLocaleString("en-IN")}
+          </h2>
         </div>
-
 
         <div className="summary-box">
-
-          <span>Total Sales</span>
-
-          <h2>257</h2>
-
-          <small>+8.4% from last period</small>
-
+          <span>Total Orders</span>
+          <h2>{analytics.totalOrders}</h2>
         </div>
-
 
         <div className="summary-box">
-
-          <span>Average Order Value</span>
-
-          <h2>₹1,480</h2>
-
-          <small>+5.2% from last period</small>
-
+          <span>Total Products</span>
+          <h2>{analytics.totalProducts}</h2>
         </div>
-
 
         <div className="summary-box">
-
-          <span>Conversion Rate</span>
-
-          <h2>4.8%</h2>
-
-          <small>+2.1% from last period</small>
-
+          <span>Total Categories</span>
+          <h2>{analytics.categories}</h2>
         </div>
-
 
       </div>
 
 
       {/* Revenue Chart */}
 
-      <div className="analytics-chart-card">
+      <div className="analytics-grid">
 
-        <div className="chart-header">
+        <div className="analytics-card">
 
-          <div>
+          <div className="analytics-card-heading">
+            <h2>Revenue Overview</h2>
+            <p>Monthly revenue from paid orders</p>
+          </div>
 
-            <h3>Revenue Overview</h3>
+          <div style={{ width: "100%", height: 300 }}>
 
-            <p>Monthly revenue performance</p>
+            <ResponsiveContainer width="100%" height="100%">
+
+              <BarChart data={analytics.monthlyRevenue}>
+
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  vertical={false}
+                />
+
+                <XAxis dataKey="month" />
+
+                <YAxis />
+
+                <Tooltip
+                  formatter={(value) =>
+                    `₹${Number(value).toLocaleString("en-IN")}`
+                  }
+                />
+
+                <Bar
+                  dataKey="revenue"
+                  fill="#d88b9b"
+                  radius={[6, 6, 0, 0]}
+                />
+
+              </BarChart>
+
+            </ResponsiveContainer>
 
           </div>
 
         </div>
 
 
-        <div className="analytics-chart">
+        {/* Order Status Chart */}
 
-          <ResponsiveContainer width="100%" height={320}>
+        <div className="analytics-card">
 
-            <BarChart data={revenueData}>
+          <div className="analytics-card-heading">
+            <h2>Order Status</h2>
+            <p>Current order distribution</p>
+          </div>
 
-              <CartesianGrid
-                strokeDasharray="3 3"
-                vertical={false}
-              />
+          <div style={{ width: "100%", height: 300 }}>
 
-              <XAxis
-                dataKey="month"
-                axisLine={false}
-                tickLine={false}
-              />
+            <ResponsiveContainer width="100%" height="100%">
 
-              <YAxis
-                axisLine={false}
-                tickLine={false}
-              />
+              <PieChart>
 
-              <Tooltip />
+                <Pie
+                  data={analytics.orderStatus}
+                  dataKey="value"
+                  nameKey="name"
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={95}
+                  label
+                >
 
-              <Bar
-                dataKey="revenue"
-                fill="#C77D94"
-                radius={[8, 8, 0, 0]}
-                barSize={40}
-              />
+                  {analytics.orderStatus.map((entry, index) => (
 
-            </BarChart>
+                    <Cell
+                      key={entry.name}
+                      fill={COLORS[index % COLORS.length]}
+                    />
 
-          </ResponsiveContainer>
+                  ))}
+
+                </Pie>
+
+                <Tooltip />
+
+                <Legend />
+
+              </PieChart>
+
+            </ResponsiveContainer>
+
+          </div>
 
         </div>
 
       </div>
 
 
-      {/* Category Chart */}
+      {/* Best Selling Products */}
 
-      <div className="analytics-bottom-grid">
+      <div className="analytics-card best-selling-card">
 
-
-        <div className="analytics-chart-card">
-
-          <h3>Sales by Category</h3>
-
-          <p>Product category distribution</p>
-
-
-          <ResponsiveContainer width="100%" height={280}>
-
-            <PieChart>
-
-              <Pie
-                data={categoryData}
-                dataKey="value"
-                nameKey="name"
-                cx="50%"
-                cy="50%"
-                outerRadius={95}
-                innerRadius={55}
-                paddingAngle={4}
-              >
-
-                {categoryData.map((entry, index) => (
-
-                  <Cell
-                    key={entry.name}
-                    fill={COLORS[index % COLORS.length]}
-                  />
-
-                ))}
-
-              </Pie>
-
-              <Tooltip />
-
-              <Legend />
-
-            </PieChart>
-
-          </ResponsiveContainer>
-
+        <div className="analytics-card-heading">
+          <h2>Best-Selling Products</h2>
+          <p>Products appearing most frequently in orders</p>
         </div>
 
-
-        {/* Best Selling Products */}
-
-        <div className="analytics-chart-card">
-
-          <h3>Best Selling Products</h3>
-
-          <p>Your most popular floral arrangements</p>
-
+        {analytics.bestSelling.length > 0 ? (
 
           <div className="best-selling-list">
 
-            {bestSelling.map((product, index) => (
+            {analytics.bestSelling.map((product, index) => (
 
               <div
                 className="best-selling-item"
                 key={product.name}
               >
 
-                <div className="selling-rank">
+                <div className="best-selling-number">
                   {index + 1}
                 </div>
 
-                <div className="selling-details">
-
+                <div className="best-selling-info">
                   <h4>{product.name}</h4>
-
-                  <p>{product.sales} items sold</p>
-
+                  <p>{product.sales} orders</p>
                 </div>
-
-                <strong>
-                  ₹{product.revenue.toLocaleString("en-IN")}
-                </strong>
 
               </div>
 
@@ -296,8 +397,13 @@ function Analytics() {
 
           </div>
 
-        </div>
+        ) : (
 
+          <p className="empty-message">
+            No sales data available yet.
+          </p>
+
+        )}
 
       </div>
 
@@ -306,6 +412,5 @@ function Analytics() {
   );
 
 }
-
 
 export default Analytics;

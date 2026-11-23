@@ -47,9 +47,19 @@ function Orders() {
   ];
 
   const [orders, setOrders] = useState(() => {
-    const saved = localStorage.getItem("roselleOrders");
-    return saved ? JSON.parse(saved) : initialOrders;
-  });
+  const saved = localStorage.getItem("roselleOrders");
+
+  if (saved) {
+    return JSON.parse(saved);
+  }
+
+  localStorage.setItem(
+    "roselleOrders",
+    JSON.stringify(initialOrders)
+  );
+
+  return initialOrders;
+});
 
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("All");
@@ -59,12 +69,15 @@ function Orders() {
   // Save orders
 
   const saveOrders = (updatedOrders) => {
-    setOrders(updatedOrders);
-    localStorage.setItem(
-      "roselleOrders",
-      JSON.stringify(updatedOrders)
-    );
-  };
+  setOrders(updatedOrders);
+
+  localStorage.setItem(
+    "roselleOrders",
+    JSON.stringify(updatedOrders)
+  );
+
+  window.dispatchEvent(new Event("dashboardUpdate"));
+};
 
 
   // Update order status
